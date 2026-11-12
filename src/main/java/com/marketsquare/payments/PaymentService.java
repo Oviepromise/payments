@@ -1,13 +1,28 @@
 package com.marketsquare.payments;
 
+import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Service
 public class PaymentService {
 
-    public Payment createPayment(String orderId, double amount, String method){
-        String paymentId = "PAY" + System.currentTimeMillis();
-        return new Payment(paymentId, orderId, amount, method);
-    }
+    private Map<String, Payment> paymentStore = new HashMap<>();
 
-    public boolean processPayment(Payment payment){
-        return payment.checkTransaction();
+    public Payment processPayment(String orderId, double amount, String idempotentKey) {
+        if (paymentStore.containsKey(idempotentKey)) {
+            return paymentStore.get(idempotentKey);
+        }
+
+        Payment payment = new Payment();
+        payment.setOrderId(orderId);
+        payment.setAmount(amount);
+        payment.setIdempotentKey(idempotentKey);
+        payment.setPaymentId("PAY-" + System.currentTimeMillis());
+
+        paymentStore.put(idempotentKey, payment);
+
+        return payment;
     }
 }
