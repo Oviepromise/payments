@@ -1,28 +1,27 @@
 package com.marketsquare.payments;
 
 import org.springframework.stereotype.Service;
-
-import java.util.HashMap;
-import java.util.Map;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.UUID;
 
 @Service
 public class PaymentService {
+    private final PaymentRepository paymentRepository;
+    private final PaystackService paystackService;
 
-    private Map<String, Payment> paymentStore = new HashMap<>();
+    public PaymentService(PaymentRepository paymentRepository, PaystackService paystackService) {
+        this.paymentRepository = paymentRepository;
+        this.paystackService = paystackService;
+    }
 
-    public Payment processPayment(String orderId, double amount, String idempotentKey) {
-        if (paymentStore.containsKey(idempotentKey)) {
-            return paymentStore.get(idempotentKey);
-        }
-
-        Payment payment = new Payment();
-        payment.setOrderId(orderId);
-        payment.setAmount(amount);
-        payment.setIdempotentKey(idempotentKey);
-        payment.setPaymentId("PAY-" + System.currentTimeMillis());
-
-        paymentStore.put(idempotentKey, payment);
-
-        return payment;
+    @Transactional
+    public Payment processPayment(String orderId, double amount, String idempotentKey){
+        return paymentRepository.findByIdempotentKey(idempotentKey).orElseGet (() -> {
+            Payment payment = new Payment();
+             payment.setReference(UUID.randomUUID().toString());
+             payment.setIdempotentKey(idempotentKey);
+             payment.setStatus("SUCCESS");
+            return paymentRepository.save(payment);
+        });
     }
 }
